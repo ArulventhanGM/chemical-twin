@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chemical Twin</title>
+    <meta name="description" content="High-precision Three.js 3D implementation of an industrial mixing and storage tank system with fluid simulation, CAD wireframe outlines, and exploded view." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <!-- 3D WebGL Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Header Navigation Bar -->
+    <header id="top-bar">
+      <div class="brand">
+        <div class="brand-badge">Chemical Twin</div>
+        <div class="brand-text">
+          <h1>Industrial Tank Assembly</h1>
+          <p class="subtitle">Dual Elevated Feeders &amp; Primary Mixing Vessel</p>
+        </div>
+      </div>
+
+      <!-- Quick View Preset Selector in Topbar -->
+      <div class="top-presets">
+        <button class="preset-btn active" data-preset="image1" title="Axonometric angle matching Image 1">
+          <span class="icon">📐</span> Image 1 (Isometric)
+        </button>
+        <button class="preset-btn" data-preset="image2" title="Orthographic front elevation matching Image 2">
+          <span class="icon">⚙️</span> Image 2 (Front)
+        </button>
+        <button class="preset-btn" data-preset="top" title="Top plan view">
+          <span class="icon">⬆️</span> Top Plan
+        </button>
+        <button class="preset-btn" data-preset="side" title="Side profile view">
+          <span class="icon">➡️</span> Side View
+        </button>
+      </div>
+
+    </header>
+
+    <section id="digital-twin-status" aria-label="Digital twin process status">
+      <div class="dt-status-header">
+        <span class="section-title">Live Digital Twin</span>
+        <strong id="dt-stage">IDLE</strong>
+      </div>
+      <div class="dt-status-grid">
+        <span>Tank A Level</span><strong id="dt-level-a">0 %</strong>
+        <span>Tank B Level</span><strong id="dt-level-b">0 %</strong>
+        <span>Tank C Level</span><strong id="dt-level-c">0 %</strong>
+        <span>Tank A Dispensed</span><strong id="dt-dispensed-a">0 mL</strong>
+        <span>Tank B Dispensed</span><strong id="dt-dispensed-b">0 mL</strong>
+        <span>Valve A</span><strong id="dt-valve-a">CLOSED</strong>
+        <span>Valve B</span><strong id="dt-valve-b">CLOSED</strong>
+        <span>Stirrer</span><strong id="dt-stirrer">OFF</strong>
+        <span>Target Volume</span><strong id="dt-target">0 mL</strong>
+        <span>Mixing Time</span><strong id="dt-mixing-time">0 seconds</strong>
+      </div>
+      <div id="dt-error" class="dt-error" hidden></div>
+    </section>
+
+    <!-- Side Control Dock -->
+    <aside id="side-dock" class="dock-panel">
+      <div class="dock-header">
+        <div class="dock-title">
+          <span class="dot"></span> Assembly Controls
+        </div>
+        <button id="btn-toggle-dock" class="dock-toggle-btn" title="Toggle Panel">⏴</button>
+      </div>
+
+      <div class="dock-scroll">
+        <!-- Section 1: Render Theme -->
+        <div class="control-section">
+          <div class="section-title">Visual Render Style</div>
+          <div class="theme-grid">
+            <button class="theme-btn active" data-theme="cadOutline" title="Image 1 Match: Translucent CAD body with dark silhouette edges">
+              <span class="theme-color" style="background: linear-gradient(135deg, #cbd5e1 0%, #334155 100%);"></span>
+              <span class="theme-label">CAD Wireframe (Image 1)</span>
+            </button>
+            <button class="theme-btn" data-theme="solidCad" title="Image 2 Match: Industrial satin steel CAD shading">
+              <span class="theme-color" style="background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);"></span>
+              <span class="theme-label">Solid CAD (Image 2)</span>
+            </button>
+            <button class="theme-btn" data-theme="fluidSim" title="Translucent acrylic with visible fluid dynamics">
+              <span class="theme-color" style="background: linear-gradient(135deg, #38bdf8 0%, #0369a1 100%);"></span>
+              <span class="theme-label">Fluid Flow Inspection</span>
+            </button>
+            <button class="theme-btn" data-theme="stainless" title="Polished high-reflection stainless steel">
+              <span class="theme-color" style="background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%);"></span>
+              <span class="theme-label">Brushed Stainless</span>
+            </button>
+            <button class="theme-btn" data-theme="blueprint" title="Cyber technical blueprint with glowing edges">
+              <span class="theme-color" style="background: linear-gradient(135deg, #0284c7 0%, #082f49 100%);"></span>
+              <span class="theme-label">Blueprint Cyber</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 2: Exploded Assembly Slider -->
+        <div class="control-section">
+          <div class="section-title-row">
+            <span class="section-title">Exploded Assembly</span>
+            <span id="val-explode" class="badge">0%</span>
+          </div>
+          <div class="slider-group">
+            <input type="range" id="slider-explode" min="0" max="1" step="0.01" value="0" />
+            <div class="range-labels">
+              <span>Assembled</span>
+              <span>Expanded</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Fluid Dynamics -->
+        <div class="control-section">
+          <div class="section-title-row">
+            <span class="section-title">Fluid Levels &amp; Flow</span>
+            <button id="btn-flow-pause" class="btn-micro">⏸️ Pause</button>
+          </div>
+
+          <div class="toggle-row">
+            <label class="switch-label" for="chk-fluid">
+              <input type="checkbox" id="chk-fluid" />
+              <span class="slider-switch"></span>
+              <span class="text">Show Fluid Volume &amp; Streams</span>
+            </label>
+          </div>
+
+          <!-- Left Tank Slider -->
+          <div class="tank-level-item">
+            <div class="tank-level-header">
+              <span>Left Elevated Tank</span>
+              <span id="val-left-tank" class="mono">75%</span>
+            </div>
+            <input type="range" id="slider-left-tank" min="0.05" max="1" step="0.01" value="0.75" />
+          </div>
+
+          <!-- Center Tank Slider -->
+          <div class="tank-level-item">
+            <div class="tank-level-header">
+              <span>Center Primary Tank</span>
+              <span id="val-center-tank" class="mono">50%</span>
+            </div>
+            <input type="range" id="slider-center-tank" min="0.05" max="1" step="0.01" value="0.5" />
+          </div>
+
+          <!-- Right Tank Slider -->
+          <div class="tank-level-item">
+            <div class="tank-level-header">
+              <span>Right Elevated Tank</span>
+              <span id="val-right-tank" class="mono">65%</span>
+            </div>
+            <input type="range" id="slider-right-tank" min="0.05" max="1" step="0.01" value="0.65" />
+          </div>
+        </div>
+
+        <!-- Section 4: Engineering Inspection -->
+        <div class="control-section">
+          <div class="section-title">CAD Inspection Tools</div>
+          <div class="toggle-list">
+            <label class="switch-label" for="chk-edges">
+              <input type="checkbox" id="chk-edges" checked />
+              <span class="slider-switch"></span>
+              <span class="text">CAD Silhouette Edges (Image 1)</span>
+            </label>
+
+            <label class="switch-label" for="chk-dimensions">
+              <input type="checkbox" id="chk-dimensions" />
+              <span class="slider-switch"></span>
+              <span class="text">3D Engineering Dimensions</span>
+            </label>
+
+            <label class="switch-label" for="chk-rotate">
+              <input type="checkbox" id="chk-rotate" />
+              <span class="slider-switch"></span>
+              <span class="text">Auto Turntable Orbit</span>
+            </label>
+
+            <label class="switch-label" for="chk-grid">
+              <input type="checkbox" id="chk-grid" />
+              <span class="slider-switch"></span>
+              <span class="text">Floor Reference Grid</span>
+            </label>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <button id="btn-cutaway" class="action-btn full-width" title="Cutaway cross section showing interior of tanks and pipes">
+              <span>✂️</span> Toggle Cross-Section Cutaway
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 5: Specifications Summary -->
+        <div class="control-section info-card">
+          <div class="section-title">Assembly Specs</div>
+          <ul class="specs-list">
+            <li><span>Overall Footprint:</span> <strong>9.6m × 2.5m × 5.2m</strong></li>
+            <li><span>Primary Tank:</span> <strong>Ø 2500 mm × 3200 mm</strong></li>
+            <li><span>Elevated Tanks:</span> <strong>2× Ø 2000 mm × 2200 mm</strong></li>
+            <li><span>Transfer Feed Pipes:</span> <strong>2× Ø 220 mm with 90° Elbows</strong></li>
+            <li><span>Lower Discharge:</span> <strong>2× Ø 220 mm Horizontal Outlets</strong></li>
+            <li><span>Support System:</span> <strong>8× High-Tensile Steel Columns</strong></li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Code Viewer Modal -->
+    <div id="modal-code" class="modal-overlay hidden">
+      <div class="modal-container">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span>💻</span> Standalone Three.js Tank Implementation
+          </div>
+          <div class="modal-actions">
+            <button id="btn-copy-code" class="btn-primary">📋 Copy Three.js Code</button>
+            <button id="btn-close-modal" class="btn-icon">✕</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">
+            Here is the complete, self-contained Three.js code that builds this exact 3D assembly (matching Image 1 &amp; Image 2). You can drop this into any Three.js project, vanilla HTML file, React Three Fiber, or Vite project!
+          </p>
+          <pre><code id="code-snippet-pre">import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+// 1. Scene, Camera, Renderer
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9aa8b8); // Authentic CAD studio grey-blue
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+// Camera angle matching Image 1:
+camera.position.set(7.8, 6.4, 9.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 2.3, 0);
+controls.enableDamping = true;
+
+// 2. Studio Lighting
+const ambient = new THREE.AmbientLight(0xd9e5f3, 0.75);
+scene.add(ambient);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+keyLight.position.set(9, 14, 11);
+keyLight.castShadow = true;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.6);
+fillLight.position.set(-10, 8, -6);
+scene.add(fillLight);
+
+// 3. Materials
+// Solid CAD material (Image 2)
+const matSolid = new THREE.MeshStandardMaterial({
+  color: 0x98a4b3,
+  roughness: 0.32,
+  metalness: 0.55,
+  side: THREE.DoubleSide
+});
+
+// CAD Edges line material (Image 1)
+const matLine = new THREE.LineBasicMaterial({
+  color: 0x18202a,
+  linewidth: 1.5
+});
+
+// Helper to create hollow tank geometry with wall thickness & bottom plate
+function createHollowTank(outerR, innerR, height, bottomThick = 0.08) {
+  const points = [
+    new THREE.Vector2(0, bottomThick),
+    new THREE.Vector2(innerR, bottomThick),
+    new THREE.Vector2(innerR, height),
+    new THREE.Vector2(outerR, height),
+    new THREE.Vector2(outerR, 0.05),
+    new THREE.Vector2(outerR - 0.05, 0),
+    new THREE.Vector2(0, 0)
+  ];
+  return new THREE.LatheGeometry(points, 56);
+}
+
+// Helper to attach crisp CAD edges to any mesh
+function addCadEdges(mesh, threshold = 20) {
+  const edges = new THREE.EdgesGeometry(mesh.geometry, threshold);
+  const line = new THREE.LineSegments(edges, matLine);
+  mesh.add(line);
+  return mesh;
+}
+
+const assembly = new THREE.Group();
+
+// A. Center Tank (radius 1.25, height 3.2, base at Y=0.6)
+const centerGeom = createHollowTank(1.25, 1.17, 3.2, 0.1);
+const centerMesh = addCadEdges(new THREE.Mesh(centerGeom, matSolid));
+centerMesh.position.set(0, 0.6, 0);
+assembly.add(centerMesh);
+
+// Center Tank 4 Base Feet (height 0.6)
+const footGeom = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 24);
+footGeom.translate(0, -0.3, 0);
+[0, Math.PI * 0.5, Math.PI, Math.PI * 1.5].forEach(angle => {
+  const foot = addCadEdges(new THREE.Mesh(footGeom, matSolid));
+  foot.position.set(Math.cos(angle) * 0.9, 0.6, Math.sin(angle) * 0.9);
+  assembly.add(foot);
+});
+
+// Center Tank Lower Discharge Pipes (Left & Right)
+const lowerPipeGeom = new THREE.CylinderGeometry(0.11, 0.11, 1.25, 24);
+lowerPipeGeom.rotateZ(Math.PI / 2);
+lowerPipeGeom.translate(0.625, 0, 0);
+
+const lowerLeft = addCadEdges(new THREE.Mesh(lowerPipeGeom, matSolid));
+lowerLeft.position.set(-1.25, 1.2, 0);
+lowerLeft.rotation.y = Math.PI; // points left
+assembly.add(lowerLeft);
+
+const lowerRight = addCadEdges(new THREE.Mesh(lowerPipeGeom, matSolid));
+lowerRight.position.set(1.25, 1.2, 0); // points right
+assembly.add(lowerRight);
+
+// B. Side Elevated Tanks (Left: X=-3.8, Right: X=+3.8, base at Y=3.0)
+const sideGeom = createHollowTank(1.0, 0.93, 2.2, 0.08);
+const legGeom = new THREE.CylinderGeometry(0.065, 0.065, 3.0, 24);
+legGeom.translate(0, -1.5, 0);
+
+[-3.8, 3.8].forEach(posX => {
+  // Elevated Tank
+  const tank = addCadEdges(new THREE.Mesh(sideGeom, matSolid));
+  tank.position.set(posX, 3.0, 0);
+  assembly.add(tank);
+
+  // 4 Slender Support Legs
+  [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75].forEach(ang => {
+    const leg = addCadEdges(new THREE.Mesh(legGeom, matSolid));
+    leg.position.set(posX + Math.cos(ang) * 0.74, 3.0, Math.sin(ang) * 0.74);
+    assembly.add(leg);
+  });
+});
+
+// C. Upper Connecting Pipes with 90° Smooth Elbows
+function createPipe(isLeft) {
+  const sign = isLeft ? -1 : 1;
+  const dropX = sign * 3.15;
+  const inletY = 2.9;
+  const bendR = 0.35;
+  const targetX = sign * 1.25;
+
+  const path = new THREE.CurvePath();
+  path.add(new THREE.LineCurve3(new THREE.Vector3(dropX, 3.0, 0), new THREE.Vector3(dropX, inletY + bendR, 0)));
+  path.add(new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(dropX, inletY + bendR, 0),
+    new THREE.Vector3(dropX, inletY, 0),
+    new THREE.Vector3(dropX - sign * bendR, inletY, 0)
+  ));
+  path.add(new THREE.LineCurve3(new THREE.Vector3(dropX - sign * bendR, inletY, 0), new THREE.Vector3(targetX, inletY, 0)));
+
+  const tube = addCadEdges(new THREE.Mesh(new THREE.TubeGeometry(path, 64, 0.11, 24, false), matSolid));
+  assembly.add(tube);
+
+  // Collar Sleeve
+  const collar = addCadEdges(new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.32, 24), matSolid));
+  collar.geometry.rotateZ(Math.PI / 2);
+  collar.position.set(sign * 2.2, inletY, 0);
+  assembly.add(collar);
+}
+
+createPipe(true);  // Left pipe
+createPipe(false); // Right pipe
+
+scene.add(assembly);
+
+// Render loop
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Module Script -->
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

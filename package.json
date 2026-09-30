@@ -1,0 +1,19 @@
+{
+  "name": "threejs-tanks-cad",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "fake-server": "node server/fakeDigitalTwinServer.js",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.170.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}

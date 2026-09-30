@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-09-29T21:00:00+05:30",
+  "tanks": {
+    "A": {
+      "level": 75,
+      "dispensed": 120
+    },
+    "B": {
+      "level": 55,
+      "dispensed": 100
+    },
+    "C": {
+      "level": 38,
+      "dispensed": 0
+    }
+  },
+  "equipment": {
+    "valveA": true,
+    "valveB": false,
+    "stirrer": true
+  },
+  "process": {
+    "stage": "MIXING",
+    "mixingTime": 60,
+    "targetVolume": 200
+  },
+  "error": {
+    "active": false,
+    "message": ""
+  }
+}

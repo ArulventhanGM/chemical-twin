@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Three.js Industrial Tanks Assembly - Standalone</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body, html { width: 100%; height: 100%; overflow: hidden; font-family: system-ui, sans-serif; background: #8fa0b2; }
+    #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+    #ui-bar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      z-index: 10;
+    }
+    .title { font-weight: 700; font-size: 15px; }
+    .btn-group { display: flex; gap: 8px; }
+    button {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    button:hover { background: #0284c7; }
+    button.active { background: #0284c7; border-color: #38bdf8; }
+    #hud-info {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(10px);
+      color: #94a3b8;
+      font-size: 12px;
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      z-index: 10;
+    }
+  </style>
+  <!-- Three.js and OrbitControls via ES Modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="ui-bar">
+    <div class="title">Industrial Tank Assembly 3D (Three.js)</div>
+    <div class="btn-group">
+      <button id="btn-img1" class="active">📐 Image 1 (CAD Wireframe)</button>
+      <button id="btn-img2">⚙️ Image 2 (Solid CAD)</button>
+      <button id="btn-rotate">🔄 Turntable</button>
+      <button id="btn-explode">💥 Exploded View</button>
+    </div>
+  </div>
+  <div id="hud-info">Left Click: Orbit • Right Click: Pan • Scroll: Zoom</div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // 1. Scene, Camera, Renderer
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x9aa8b8);
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+    // View angle matching Image 1
+    camera.position.set(7.8, 6.4, 9.8);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 2.3, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    // 2. Studio Lighting Rig
+    const ambient = new THREE.AmbientLight(0xd9e5f3, 0.75);
+    scene.add(ambient);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.45);
+    keyLight.position.set(9, 14, 11);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.bias = -0.0003;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.65);
+    fillLight.position.set(-10, 8, -6);
+    scene.add(fillLight);
+
+    const shadowFloor = new THREE.Mesh(
+      new THREE.PlaneGeometry(30, 30),
+      new THREE.ShadowMaterial({ opacity: 0.16 })
+    );
+    shadowFloor.rotation.x = -Math.PI / 2;
+    shadowFloor.position.y = -0.002;
+    shadowFloor.receiveShadow = true;
+    scene.add(shadowFloor);
+
+    // 3. Materials
+    const matSolid = new THREE.MeshStandardMaterial({
+      color: 0x98a4b3,
+      roughness: 0.32,
+      metalness: 0.55,
+      side: THREE.DoubleSide
+    });
+
+    const matTranslucent = new THREE.MeshPhysicalMaterial({
+      color: 0xc8d7e6,
+      roughness: 0.15,
+      metalness: 0.1,
+      transmission: 0.72,
+      thickness: 0.5,
+      transparent: true,
+      opacity: 0.38,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+
+    const matLineCad = new THREE.LineBasicMaterial({
+      color: 0x18202a,
+      linewidth: 1.5,
+      transparent: true,
+      opacity: 0.95
+    });
+
+    const matPipeSolid = new THREE.MeshStandardMaterial({
+      color: 0x8a99a8,
+      roughness: 0.28,
+      metalness: 0.6,
+      side: THREE.DoubleSide
+    });
+
+    // Geometry Helpers
+    function createHollowTank(outerR, innerR, height, bottomThick = 0.08) {
+      const pts = [
+        new THREE.Vector2(0, bottomThick),
+        new THREE.Vector2(innerR, bottomThick),
+        new THREE.Vector2(innerR, height),
+        new THREE.Vector2(outerR, height),
+        new THREE.Vector2(outerR, 0.06),
+        new THREE.Vector2(outerR - 0.02, 0.02),
+        new THREE.Vector2(outerR - 0.06, 0),
+        new THREE.Vector2(0, 0)
+      ];
+      const g = new THREE.LatheGeometry(pts, 56);
+      g.computeVertexNormals();
+      return g;
+    }
+
+    const allMeshes = [];
+    const allEdges = [];
+    const explodedParts = [];
+
+    function addPart(mesh, name, explodeVec = new THREE.Vector3(), thresh = 20) {
+      mesh.name = name;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+
+      const edgesGeom = new THREE.EdgesGeometry(mesh.geometry, thresh);
+      const edgesLine = new THREE.LineSegments(edgesGeom, matLineCad);
+      mesh.add(edgesLine);
+
+      allMeshes.push(mesh);
+      allEdges.push(edgesLine);
+      explodedParts.push({ obj: mesh, initPos: mesh.position.clone(), vec: explodeVec });
+      return mesh;
+    }
+
+    const assembly = new THREE.Group();
+
+    // ================= Center Tank System =================
+    const centerGeom = createHollowTank(1.25, 1.17, 3.2, 0.1);
+    const centerMesh = addPart(new THREE.Mesh(centerGeom, matTranslucent), 'CenterTank', new THREE.Vector3(0, 0, 0), 20);
+    centerMesh.position.set(0, 0.6, 0);
+    assembly.add(centerMesh);
+
+    // 4 Feet under center tank
+    const footGeom = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 24);
+    footGeom.translate(0, -0.3, 0);
+    [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5].forEach((ang, i) => {
+      const foot = addPart(new THREE.Mesh(footGeom, matTranslucent), `Foot_${i}`, new THREE.Vector3(0, -0.5, 0), 25);
+      foot.position.set(Math.cos(ang) * 0.9, 0.6, Math.sin(ang) * 0.9);
+      assembly.add(foot);
+    });
+
+    // Lower Side Outlet Pipes
+    const lowerPipePts = [
+      new THREE.Vector2(0.09, 0),
+      new THREE.Vector2(0.11, 0),
+      new THREE.Vector2(0.11, 1.25),
+      new THREE.Vector2(0.09, 1.25),
+      new THREE.Vector2(0.09, 0)
+    ];
+    const lowerPipeGeom = new THREE.LatheGeometry(lowerPipePts, 24);
+    lowerPipeGeom.rotateZ(-Math.PI / 2);
+
+    const lowerLeft = addPart(new THREE.Mesh(lowerPipeGeom, matTranslucent), 'LowerLeft', new THREE.Vector3(-0.8, 0, 0), 20);
+    lowerLeft.position.set(-1.25, 1.2, 0);
+    lowerLeft.rotation.y = Math.PI;
+    assembly.add(lowerLeft);
+
+    const lowerRight = addPart(new THREE.Mesh(lowerPipeGeom, matTranslucent), 'LowerRight', new THREE.Vector3(0.8, 0, 0), 20);
+    lowerRight.position.set(1.25, 1.2, 0);
+    assembly.add(lowerRight);
+
+    // ================= Elevated Side Tanks =================
+    const sideGeom = createHollowTank(1.0, 0.93, 2.2, 0.08);
+    const legGeom = new THREE.CylinderGeometry(0.065, 0.065, 3.0, 24);
+    legGeom.translate(0, -1.5, 0);
+
+    [-3.8, 3.8].forEach((posX) => {
+      const isL = posX < 0;
+      const sgn = isL ? -1 : 1;
+
+      const tank = addPart(new THREE.Mesh(sideGeom, matTranslucent), isL ? 'LeftTank' : 'RightTank', new THREE.Vector3(sgn * 1.5, 0.6, 0), 20);
+      tank.position.set(posX, 3.0, 0);
+      assembly.add(tank);
+
+      // 4 Legs
+      [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75].forEach((ang, idx) => {
+        const leg = addPart(new THREE.Mesh(legGeom, matTranslucent), `Leg_${sgn}_${idx}`, new THREE.Vector3(sgn * 1.5, -0.3, 0), 25);
+        leg.position.set(posX + Math.cos(ang) * 0.74, 3.0, Math.sin(ang) * 0.74);
+        assembly.add(leg);
+      });
+
+      // Upper Transfer Pipe with 90° Elbow
+      const dropX = sgn * 3.15;
+      const inletY = 2.9;
+      const bendR = 0.35;
+      const targetX = sgn * 1.25;
+
+      const path = new THREE.CurvePath();
+      path.add(new THREE.LineCurve3(new THREE.Vector3(dropX, 3.0, 0), new THREE.Vector3(dropX, inletY + bendR, 0)));
+      path.add(new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(dropX, inletY + bendR, 0),
+        new THREE.Vector3(dropX, inletY, 0),
+        new THREE.Vector3(dropX - sgn * bendR, inletY, 0)
+      ));
+      path.add(new THREE.LineCurve3(new THREE.Vector3(dropX - sgn * bendR, inletY, 0), new THREE.Vector3(targetX, inletY, 0)));
+
+      const tubeGeom = new THREE.TubeGeometry(path, 64, 0.11, 24, false);
+      const tubeMesh = addPart(new THREE.Mesh(tubeGeom, matTranslucent), `UpperPipe_${sgn}`, new THREE.Vector3(sgn * 0.8, 0.4, 0), 20);
+      assembly.add(tubeMesh);
+
+      // Collar Coupling
+      const collarGeom = new THREE.CylinderGeometry(0.15, 0.15, 0.32, 24);
+      collarGeom.rotateZ(Math.PI / 2);
+      const collar = addPart(new THREE.Mesh(collarGeom, matTranslucent), `Collar_${sgn}`, new THREE.Vector3(sgn * 0.5, 0.3, 0), 25);
+      collar.position.set(sgn * 2.2, inletY, 0);
+      assembly.add(collar);
+    });
+
+    scene.add(assembly);
+
+    // ================= Mode Switchers =================
+    let currentMode = 'cadOutline'; // 'cadOutline' (Image 1) or 'solidCad' (Image 2)
+
+    function setMode(mode) {
+      currentMode = mode;
+      const isSolid = mode === 'solidCad';
+      allMeshes.forEach(mesh => {
+        mesh.material = isSolid ? matSolid : matTranslucent;
+      });
+      document.getElementById('btn-img1').classList.toggle('active', !isSolid);
+      document.getElementById('btn-img2').classList.toggle('active', isSolid);
+    }
+
+    document.getElementById('btn-img1').addEventListener('click', () => {
+      setMode('cadOutline');
+      camera.position.set(7.8, 6.4, 9.8);
+      controls.target.set(0, 2.3, 0);
+    });
+
+    document.getElementById('btn-img2').addEventListener('click', () => {
+      setMode('solidCad');
+      camera.position.set(0.0, 3.2, 12.5);
+      controls.target.set(0, 2.3, 0);
+    });
+
+    let autoRotate = false;
+    document.getElementById('btn-rotate').addEventListener('click', (e) => {
+      autoRotate = !autoRotate;
+      controls.autoRotate = autoRotate;
+      e.target.classList.toggle('active', autoRotate);
+    });
+
+    let exploded = false;
+    document.getElementById('btn-explode').addEventListener('click', (e) => {
+      exploded = !exploded;
+      e.target.classList.toggle('active', exploded);
+      const factor = exploded ? 1 : 0;
+      explodedParts.forEach(p => {
+        p.obj.position.copy(p.initPos).addScaledVector(p.vec, factor);
+      });
+    });
+
+    // Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

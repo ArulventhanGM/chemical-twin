@@ -213,6 +213,8 @@ body.blueprint-theme {
   border-radius: var(--radius-lg);
   z-index: 10;
   box-shadow: var(--shadow-dock);
+  max-height: 72vh;
+  overflow-y: auto;
 }
 
 .dt-status-header {
@@ -228,6 +230,16 @@ body.blueprint-theme {
   color: var(--accent-glow);
   font-family: var(--font-mono);
   font-size: 11px;
+}
+
+.dt-status-grid strong {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+#dt-connection[data-state="offline"],
+#dt-connection[data-state="error"] {
+  color: #fb7185;
 }
 
 .dt-status-grid {
@@ -744,5 +756,6 @@ code {
     bottom: 52px;
     right: 10px;
     width: 218px;
+    max-height: 55vh;
   }
 }

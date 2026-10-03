@@ -6,6 +6,7 @@ export function updateDigitalTwinUI(state) {
   set('dt-level-a', `${Math.round(state.tanks.A.level)} %`);
   set('dt-level-b', `${Math.round(state.tanks.B.level)} %`);
   set('dt-level-c', `${Math.round(state.tanks.C.level)} %`);
+  set('dt-device-id', state.deviceId || 'Waiting for device');
   set('dt-dispensed-a', `${state.tanks.A.dispensed} mL`);
   set('dt-dispensed-b', `${state.tanks.B.dispensed} mL`);
   set('dt-valve-a', state.equipment.valveA ? 'OPEN' : 'CLOSED');
@@ -14,6 +15,11 @@ export function updateDigitalTwinUI(state) {
   set('dt-stage', state.process.stage);
   set('dt-target', `${state.process.targetVolume} mL`);
   set('dt-mixing-time', `${state.process.mixingTime} seconds`);
+  set('dt-cycle', state.process.running ? 'RUNNING' : 'STOPPED');
+  set('dt-uptime', `${Math.floor(state.uptimeMs / 1000)} seconds`);
+  set('dt-sensor-a', sensorLabel(state.sensors.A));
+  set('dt-sensor-b', sensorLabel(state.sensors.B));
+  set('dt-sensor-c', sensorLabel(state.sensors.C));
 
   const panel = document.getElementById('digital-twin-status');
   const error = document.getElementById('dt-error');
@@ -22,4 +28,8 @@ export function updateDigitalTwinUI(state) {
     error.hidden = !state.error.active;
     error.textContent = state.error.active ? `ERROR: ${state.error.message}` : '';
   }
+}
+
+function sensorLabel(healthy) {
+  return healthy === null ? 'N/A' : healthy ? 'OK' : 'FAULT';
 }

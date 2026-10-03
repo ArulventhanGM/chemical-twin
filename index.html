@@ -48,6 +48,8 @@
         <strong id="dt-stage">IDLE</strong>
       </div>
       <div class="dt-status-grid">
+        <span>MQTT</span><strong id="dt-connection" data-state="connecting">CONNECTING</strong>
+        <span>Device</span><strong id="dt-device-id">Waiting for device</strong>
         <span>Tank A Level</span><strong id="dt-level-a">0 %</strong>
         <span>Tank B Level</span><strong id="dt-level-b">0 %</strong>
         <span>Tank C Level</span><strong id="dt-level-c">0 %</strong>
@@ -56,8 +58,13 @@
         <span>Valve A</span><strong id="dt-valve-a">CLOSED</strong>
         <span>Valve B</span><strong id="dt-valve-b">CLOSED</strong>
         <span>Stirrer</span><strong id="dt-stirrer">OFF</strong>
+        <span>Cycle</span><strong id="dt-cycle">STOPPED</strong>
         <span>Target Volume</span><strong id="dt-target">0 mL</strong>
         <span>Mixing Time</span><strong id="dt-mixing-time">0 seconds</strong>
+        <span>Uptime</span><strong id="dt-uptime">0 seconds</strong>
+        <span>Sensor A</span><strong id="dt-sensor-a">N/A</strong>
+        <span>Sensor B</span><strong id="dt-sensor-b">N/A</strong>
+        <span>Sensor C</span><strong id="dt-sensor-c">N/A</strong>
       </div>
       <div id="dt-error" class="dt-error" hidden></div>
     </section>

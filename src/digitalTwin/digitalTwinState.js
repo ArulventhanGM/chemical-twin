@@ -1,3 +1,5 @@
+import mqtt from 'mqtt';
+
 const PROCESS_STAGES = new Set([
   'IDLE',
   'DOSING_A',
@@ -9,6 +11,8 @@ const PROCESS_STAGES = new Set([
 ]);
 
 let digitalTwinState = null;
+const MQTT_URL = 'wss://broker.hivemq.com:8884/mqtt';
+const MQTT_TOPIC = 'water/arul';
 
 function numberOrDefault(value, fallback = 0) {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -39,6 +43,13 @@ export function validateDigitalTwinData(data) {
 
   const normalized = {
     timestamp: typeof data.timestamp === 'string' ? data.timestamp : new Date().toISOString(),
+    deviceId: typeof data.deviceId === 'string' ? data.deviceId : '',
+    uptimeMs: numberOrDefault(data.uptimeMs),
+    sensors: {
+      A: typeof data.sensors?.A === 'boolean' ? data.sensors.A : null,
+      B: typeof data.sensors?.B === 'boolean' ? data.sensors.B : null,
+      C: typeof data.sensors?.C === 'boolean' ? data.sensors.C : null,
+    },
     tanks: {},
     equipment: {
       valveA: equipment.valveA === true,
@@ -47,6 +58,7 @@ export function validateDigitalTwinData(data) {
     },
     process: {
       stage: PROCESS_STAGES.has(process.stage) ? process.stage : 'STOPPED',
+      running: process.running === true,
       mixingTime: numberOrDefault(process.mixingTime),
       targetVolume: numberOrDefault(process.targetVolume),
     },
@@ -110,6 +122,85 @@ export function connectDigitalTwinWebSocket(url = 'ws://localhost:8080') {
     }
   });
   return socket;
+}
+
+function mapHardwarePayload(payload) {
+  const stage = payload.cycle_status === 'READY' ? 'IDLE' : payload.cycle_status;
+
+  return {
+    deviceId: payload.device_id,
+    uptimeMs: payload.uptime_ms,
+    sensors: {
+      A: payload.tank_a_sensor_ok,
+      B: payload.tank_b_sensor_ok,
+      C: payload.tank_c_sensor_ok,
+    },
+    tanks: {
+      A: { level: payload.tank_a_level_pct, dispensed: payload.dispensed_a_ml },
+      B: { level: payload.tank_b_level_pct, dispensed: payload.dispensed_b_ml },
+      C: { level: payload.tank_c_level_pct, dispensed: 0 },
+    },
+    equipment: {
+      valveA: payload.valve_a_on,
+      valveB: payload.valve_b_on,
+      stirrer: payload.stirrer_on,
+    },
+    process: {
+      stage,
+      running: payload.cycle_running,
+      mixingTime: payload.mixing_time_s,
+      targetVolume: payload.target_volume_ml,
+    },
+    error: {
+      active: typeof payload.error === 'string' && payload.error.length > 0,
+      message: typeof payload.error === 'string' ? payload.error : '',
+    },
+  };
+}
+
+function dispatchMqttStatus(status) {
+  window.dispatchEvent(new CustomEvent('digital-twin-connection', { detail: status }));
+}
+
+export function connectDigitalTwinMqtt() {
+  const client = mqtt.connect(MQTT_URL, {
+    clientId: `chemical-twin-${Math.random().toString(16).slice(2, 10)}`,
+    clean: true,
+    connectTimeout: 10000,
+    keepalive: 30,
+    reconnectPeriod: 3000,
+  });
+
+  client.on('connect', () => {
+    dispatchMqttStatus('SUBSCRIBING');
+    client.subscribe(MQTT_TOPIC, (error) => {
+      if (error) {
+        console.error(`Unable to subscribe to ${MQTT_TOPIC}:`, error);
+        dispatchMqttStatus('ERROR');
+        return;
+      }
+      console.info(`Subscribed to MQTT topic: ${MQTT_TOPIC}`);
+      dispatchMqttStatus('CONNECTED');
+    });
+  });
+  client.on('reconnect', () => dispatchMqttStatus('RECONNECTING'));
+  client.on('offline', () => dispatchMqttStatus('OFFLINE'));
+  client.on('error', (error) => {
+    console.warn('Digital-twin MQTT connection error:', error);
+    dispatchMqttStatus('ERROR');
+  });
+  client.on('message', (topic, message) => {
+    if (topic !== MQTT_TOPIC) return;
+    try {
+      const payload = JSON.parse(message.toString());
+      if (payload.cycle_status === 'OFFLINE' && payload.tank_a_level_pct === undefined) return;
+      updateDigitalTwin(mapHardwarePayload(payload));
+    } catch (error) {
+      console.error('Invalid digital-twin MQTT message:', error);
+    }
+  });
+
+  return client;
 }
 
 export { PROCESS_STAGES };

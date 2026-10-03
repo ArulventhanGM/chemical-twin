@@ -5,7 +5,7 @@ import { TankAssembly } from './TankAssembly.js';
 import { FluidSystem } from './FluidSystem.js';
 import { DimensionsAnnotation } from './DimensionsAnnotation.js';
 import {
-  connectDigitalTwinWebSocket,
+  connectDigitalTwinMqtt,
   loadLocalDigitalTwinData,
 } from './digitalTwin/digitalTwinState.js';
 import { DigitalTwinVisualization } from './digitalTwin/digitalTwinVisualization.js';
@@ -201,8 +201,15 @@ class App {
       updateDigitalTwinUI(state);
       this.updateDigitalTwinSliders(state);
     });
+    window.addEventListener('digital-twin-connection', (event) => {
+      const status = document.getElementById('dt-connection');
+      if (status) {
+        status.textContent = event.detail;
+        status.dataset.state = event.detail.toLowerCase();
+      }
+    });
     loadLocalDigitalTwinData();
-    connectDigitalTwinWebSocket();
+    connectDigitalTwinMqtt();
   }
 
   updateDigitalTwinSliders(state) {
